@@ -10,7 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+<<<<<<< HEAD
     "@supabase/supabase-js": "^2.118.0",
+=======
+>>>>>>> db422e1d5eca86fe92b983d1f4fd2a0299c9803e
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },

@@ -1,4 +1,5 @@
 
+<<<<<<< HEAD
 import { useEffect, useState } from "react";
 import Login from "./Login/Login";
 import Kalendarz from "./Kalendarz/Kalendarz";
@@ -78,3 +79,16 @@ function App() {
 }
 
 export default App;
+=======
+function App() {
+
+
+  return (
+    <>
+     
+    </>
+  )
+}
+
+export default App
+>>>>>>> db422e1d5eca86fe92b983d1f4fd2a0299c9803e
