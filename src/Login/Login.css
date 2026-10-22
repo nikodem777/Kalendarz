@@ -1,0 +1,503 @@
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+
+:root {
+  font-family: "Inter", sans-serif;
+  color: #172033;
+  background: #e9edf4;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.login-page {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 35px 20px;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      ellipse at 50% 0%,
+      rgba(111, 158, 231, 0.22),
+      transparent 58%
+    ),
+    linear-gradient(135deg, #f2f5fa 0%, #e5eaf2 55%, #edf1f7 100%);
+}
+
+.background-glow {
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.55;
+}
+
+.glow-one {
+  width: 340px;
+  height: 340px;
+  top: 5%;
+  left: -170px;
+  background: rgba(92, 145, 232, 0.2);
+}
+
+.glow-two {
+  width: 380px;
+  height: 380px;
+  right: -180px;
+  bottom: -40px;
+  background: rgba(102, 153, 227, 0.19);
+}
+
+.login-wrapper {
+  width: 100%;
+  max-width: 470px;
+  margin: auto;
+  animation: appear 0.65s ease both;
+}
+
+/* Tytuł i ikona w jednym rzędzie */
+
+.login-header {
+  text-align: center;
+  margin-bottom: 25px;
+}
+
+.brand-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 13px;
+}
+
+.brand-icon {
+  width: 49px;
+  height: 49px;
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  color: #fff;
+  background: linear-gradient(145deg, #5798ff, #3471dc);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 15px;
+  box-shadow: 0 6px 18px rgba(51, 119, 235, 0.2);
+}
+
+.login-header h1 {
+  margin: 0;
+  color: #202b3e;
+  font-size: clamp(27px, 4vw, 35px);
+  font-weight: 800;
+  letter-spacing: -1.3px;
+  line-height: 1.2;
+}
+
+.login-header > p {
+  margin: 12px 0 0;
+  color: #647187;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+/* Biała karta logowania */
+
+.login-card {
+  padding: 35px 34px 25px;
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  border-radius: 23px;
+  box-shadow:
+    0 22px 65px rgba(38, 54, 79, 0.10),
+    0 2px 8px rgba(38, 54, 79, 0.04);
+}
+
+.card-heading {
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.eyebrow {
+  display: block;
+  color: #3978e7;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 2px;
+}
+
+.card-heading h2 {
+  margin: 12px 0 9px;
+  color: #172033;
+  font-size: 30px;
+  font-weight: 750;
+  letter-spacing: -0.8px;
+}
+
+.card-heading p {
+  margin: 0;
+  color: #788397;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+/* Pola formularza */
+
+.form-group {
+  margin-bottom: 23px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 10px;
+  color: #30394b;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.label-row label {
+  margin-bottom: 10px;
+}
+
+.forgot-link {
+  padding: 0;
+  margin: 0 0 10px;
+  border: none;
+  background: transparent;
+  color: #3476e8;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.forgot-link:hover {
+  color: #2057bb;
+  text-decoration: underline;
+}
+
+.input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-height: 57px;
+  padding: 0 16px;
+  background: #f7f9fc;
+  border: 1px solid #e1e7f0;
+  border-radius: 12px;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.input-wrapper:focus-within {
+  background: #fff;
+  border-color: #6c9ef1;
+  box-shadow: 0 0 0 4px rgba(62, 125, 235, 0.1);
+}
+
+.input-wrapper > svg {
+  width: 21px;
+  height: 21px;
+  flex-shrink: 0;
+  color: #8492a8;
+}
+
+.input-wrapper input {
+  width: 100%;
+  min-width: 0;
+  height: 55px;
+  padding: 0;
+  color: #202a3b;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 14px;
+}
+
+.input-wrapper input::placeholder {
+  color: #9aa5b6;
+}
+
+.password-toggle {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  padding: 5px;
+  color: #8993a5;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.password-toggle svg {
+  width: 21px;
+  height: 21px;
+}
+
+.password-toggle:hover {
+  color: #3476e8;
+}
+
+/* Główny przycisk */
+
+.login-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  margin-top: 30px;
+  color: #fff;
+  background: linear-gradient(110deg, #4389f5 0%, #326cdb 100%);
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 7px 18px rgba(50, 108, 219, 0.2);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    filter 0.2s ease;
+}
+
+.login-button svg {
+  width: 19px;
+  height: 19px;
+  transition: transform 0.2s ease;
+}
+
+.login-button:hover {
+  filter: brightness(1.05);
+  box-shadow: 0 10px 24px rgba(50, 108, 219, 0.28);
+  transform: translateY(-2px);
+}
+
+.login-button:hover svg {
+  transform: translateX(3px);
+}
+
+.login-button:active {
+  transform: translateY(0);
+}
+
+.login-button:focus-visible,
+.forgot-link:focus-visible,
+.password-toggle:focus-visible {
+  outline: 3px solid #8bb5ff;
+  outline-offset: 4px;
+}
+
+/* Stopka karty i strony */
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  margin-top: 25px;
+  padding-top: 21px;
+  border-top: 1px solid #edf0f4;
+  color: #7d889b;
+  font-size: 12px;
+  text-align: center;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  background: #5a9cf4;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(90, 156, 244, 0.12);
+}
+
+.page-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 22px;
+  color: #7d899d;
+  font-size: 12px;
+  text-align: center;
+}
+
+.footer-separator {
+  color: #4c83cf;
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Telefony */
+
+@media (max-width: 480px) {
+  .login-page {
+    padding: 27px 17px;
+  }
+
+  .login-header {
+    margin-bottom: 24px;
+  }
+
+  .brand-title {
+    gap: 10px;
+  }
+
+  .brand-icon {
+    width: 41px;
+    height: 41px;
+    border-radius: 12px;
+  }
+
+  .brand-icon svg {
+    width: 25px;
+    height: 25px;
+  }
+
+  .login-header h1 {
+    font-size: clamp(23px, 6vw, 29px);
+    letter-spacing: -1px;
+  }
+
+  .login-header > p {
+    margin-top: 10px;
+    font-size: 14px;
+  }
+
+  .login-card {
+    padding: 29px 21px 22px;
+    border-radius: 20px;
+  }
+
+  .card-heading {
+    margin-bottom: 25px;
+  }
+
+  .card-heading h2 {
+    font-size: 27px;
+  }
+
+  .card-heading p {
+    font-size: 13px;
+  }
+
+  .form-group label {
+    font-size: 13px;
+  }
+
+  .forgot-link {
+    font-size: 11px;
+  }
+
+  .input-wrapper input {
+    font-size: 13px;
+  }
+
+  .page-footer {
+    gap: 7px;
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 350px) {
+  .brand-title {
+    gap: 8px;
+  }
+
+  .login-header h1 {
+    font-size: 22px;
+  }
+
+  .brand-icon {
+    width: 37px;
+    height: 37px;
+  }
+
+  .login-card {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .forgot-link {
+    font-size: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.forgot-password-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.forgot-link {
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  color: #3476e8;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.forgot-link:hover {
+  color: #2057bb;
+  text-decoration: underline;
+}
+
