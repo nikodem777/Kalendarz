@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import Login from "./Login/Login";
 import Kalendarz from "./Kalendarz/Kalendarz";
+import AdminPanel from "./Admin/AdminPanel";
 import { supabase } from "./supabaseClient";
 
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [profileRole, setProfileRole] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -42,7 +44,58 @@ function App() {
     };
   }, []);
 
-  if (loading) {
+  const userId = user?.id;
+
+  useEffect(() => {
+    if (!userId) return undefined;
+
+    let active = true;
+
+    supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", userId)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (!active) return;
+
+        if (error) {
+          console.error("Błąd pobierania roli użytkownika:", error.message);
+        }
+
+        setProfileRole({
+          userId,
+          role: error ? "user" : data?.role?.toLowerCase() || "user",
+          accessWarning: error
+            ? "Nie udało się pobrać roli użytkownika z tabeli profiles."
+            : ""
+        });
+      })
+      .catch((error) => {
+        if (!active) return;
+
+        console.error("Błąd pobierania roli użytkownika:", error);
+        setProfileRole({
+          userId,
+          role: "user",
+          accessWarning: "Nie udało się pobrać roli użytkownika z tabeli profiles."
+        });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [userId]);
+
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      console.error("Błąd wylogowania:", error.message);
+    }
+  };
+
+  if (loading || (user && profileRole?.userId !== user.id)) {
     return (
       <div
         style={{
@@ -64,16 +117,13 @@ function App() {
     return <Login />;
   }
 
-  return (
-    <Kalendarz
-      user={user}
-      onLogout={async () => {
-        const { error } = await supabase.auth.signOut();
+  const CalendarView = profileRole.role === "admin" ? AdminPanel : Kalendarz;
 
-        if (error) {
-          console.error("Błąd wylogowania:", error.message);
-        }
-      }}
+  return (
+    <CalendarView
+      user={user}
+      onLogout={handleLogout}
+      accessWarning={profileRole.accessWarning}
     />
   );
 }

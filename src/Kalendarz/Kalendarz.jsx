@@ -32,7 +32,12 @@ const categoryClass = (name = "") => {
   return "event";
 };
 
-export default function Kalendarz({ user, onLogout }) {
+export default function Kalendarz({
+  user,
+  onLogout,
+  accessWarning = "",
+  canManageEvents = false
+}) {
   const today = new Date();
 
   const [events, setEvents] = useState([]);
@@ -48,78 +53,30 @@ export default function Kalendarz({ user, onLogout }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [categorySuggestionsOpen, setCategorySuggestionsOpen] = useState(false);
+  const [activeCategoryIndex, setActiveCategoryIndex] = useState(-1);
 
   const [form, setForm] = useState({
     title: "",
-    date: dateKey(today),
-    start: "10:00",
-    end: "10:45",
+    startDate: dateKey(today),
+    endDate: dateKey(today),
+    singleDay: true,
+    startTime: "10:00",
+    allDay: false,
     categoryId: "",
-    place: "",
+    categoryName: "",
     description: ""
   });
 
   const activeSchoolYear = schoolYears.find(
     (year) => String(year.id) === String(schoolYearId)
   );
-
-  // Pobieranie lat szkolnych i kategorii.
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setError("");
-
-    try {
-      const [
-        { data: years, error: yearsError },
-        { data: cats, error: catsError }
-      ] = await Promise.all([
-        supabase
-          .from("school_years")
-          .select("id, name, start_date, end_date, is_active")
-          .order("start_date", { ascending: false }),
-
-        supabase
-          .from("categories")
-          .select("id, name, color, description")
-          .order("name")
-      ]);
-
-      if (yearsError) throw yearsError;
-      if (catsError) throw catsError;
-
-      const loadedYears = years || [];
-      const loadedCategories = cats || [];
-
-      setSchoolYears(loadedYears);
-      setCategories(loadedCategories);
-
-      setSchoolYearId((current) => {
-        if (
-          current &&
-          loadedYears.some((year) => String(year.id) === String(current))
-        ) {
-          return current;
-        }
-
-        const active = loadedYears.find((year) => year.is_active);
-        return String((active || loadedYears[0])?.id ?? "");
-      });
-
-      setForm((current) => ({
-        ...current,
-        categoryId:
-          current.categoryId || String(loadedCategories[0]?.id ?? "")
-      }));
-    } catch (err) {
-      setError(`Nie udało się pobrać danych: ${err.message}`);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const filteredCategories = categories.filter((category) =>
+    category.name.toLocaleLowerCase().includes(form.categoryName.trim().toLocaleLowerCase())
+  );
 
   // Pobieranie wydarzeń dla wybranego roku szkolnego.
-  const loadEvents = useCallback(async (yearId) => {
-    const { data, error } = await supabase
+  const fetchEvents = useCallback((yearId) => supabase
       .from("events")
       .select(`
         *,
@@ -130,27 +87,81 @@ export default function Kalendarz({ user, onLogout }) {
         )
       `)
       .eq("school_year_id", yearId)
-      .order("start_date", { ascending: true });
+      .order("start_date", { ascending: true }), []);
 
-    if (error) {
-      setError(`Nie udało się pobrać wydarzeń: ${error.message}`);
-      return;
-    }
+  useEffect(() => {
+    let active = true;
 
-    setEvents(data || []);
+    Promise.all([
+      supabase
+        .from("school_years")
+        .select("id, name, start_date, end_date, is_active")
+        .order("start_date", { ascending: false }),
+      supabase
+        .from("categories")
+        .select("id, name, color, description")
+        .order("name")
+    ])
+      .then(([{ data: years, error: yearsError }, { data: cats, error: catsError }]) => {
+        if (!active) return;
+        if (yearsError) throw yearsError;
+        if (catsError) throw catsError;
+
+        const loadedYears = years || [];
+        const loadedCategories = cats || [];
+
+        setSchoolYears(loadedYears);
+        setCategories(loadedCategories);
+
+        setSchoolYearId((current) => {
+          if (
+            current &&
+            loadedYears.some((year) => String(year.id) === String(current))
+          ) {
+            return current;
+          }
+
+          const activeYear = loadedYears.find((year) => year.is_active);
+          return String((activeYear || loadedYears[0])?.id ?? "");
+        });
+
+        setForm((current) => ({
+          ...current,
+          categoryId: current.categoryId || String(loadedCategories[0]?.id ?? ""),
+          categoryName: current.categoryName || loadedCategories[0]?.name || ""
+        }));
+      })
+      .catch((err) => {
+        if (active) setError(`Nie udało się pobrać danych: ${err.message}`);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (!schoolYearId) return undefined;
 
-  useEffect(() => {
-    if (schoolYearId) {
-      loadEvents(schoolYearId);
-    } else {
-      setEvents([]);
-    }
-  }, [schoolYearId, loadEvents]);
+    let active = true;
+
+    fetchEvents(schoolYearId).then(({ data, error: eventsError }) => {
+      if (!active) return;
+      if (eventsError) {
+        setError(`Nie udało się pobrać wydarzeń: ${eventsError.message}`);
+        return;
+      }
+
+      setEvents(data || []);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [schoolYearId, fetchEvents]);
 
   const calendarDays = useMemo(() => {
     const first = new Date(viewYear, viewMonth, 1);
@@ -164,13 +175,37 @@ export default function Kalendarz({ user, onLogout }) {
     });
   }, [viewYear, viewMonth]);
 
-  const monthEvents = events.filter((event) => {
+  const monthEvents = useMemo(() => events.filter((event) => {
     const date = new Date(`${event.start_date}T12:00:00`);
     return (
       date.getFullYear() === viewYear &&
       date.getMonth() === viewMonth
     );
-  });
+  }), [events, viewYear, viewMonth]);
+
+  const eventsByDate = useMemo(() => {
+    const byDate = new Map();
+
+    for (const event of events) {
+      const current = new Date(`${event.start_date}T12:00:00`);
+      const end = new Date(`${event.end_date}T12:00:00`);
+
+      while (current <= end) {
+        const key = dateKey(current);
+        const dayEvents = byDate.get(key);
+
+        if (dayEvents) {
+          dayEvents.push(event);
+        } else {
+          byDate.set(key, [event]);
+        }
+
+        current.setDate(current.getDate() + 1);
+      }
+    }
+
+    return byDate;
+  }, [events]);
 
   function updateForm(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -180,7 +215,36 @@ export default function Kalendarz({ user, onLogout }) {
   function chooseDate(date) {
     const key = dateKey(date);
     setSelectedDate(key);
-    updateForm("date", key);
+    setForm((current) => ({
+      ...current,
+      startDate: key,
+      endDate: current.singleDay ? key : current.endDate
+    }));
+    setNotice("");
+  }
+
+  function updateCategory(name) {
+    const category = categories.find(
+      (item) => item.name.toLocaleLowerCase() === name.trim().toLocaleLowerCase()
+    );
+
+    setForm((current) => ({
+      ...current,
+      categoryName: name,
+      categoryId: category ? String(category.id) : ""
+    }));
+    setNotice("");
+  }
+
+  function chooseCategory(category) {
+    setForm((current) => ({
+      ...current,
+      categoryName: category.name,
+      categoryId: String(category.id)
+    }));
+    setCategorySuggestionsOpen(false);
+    setActiveCategoryIndex(-1);
+    setNotice("");
   }
 
   function changeMonth(delta) {
@@ -192,7 +256,11 @@ export default function Kalendarz({ user, onLogout }) {
   function goToToday() {
     const key = dateKey(new Date());
     setSelectedDate(key);
-    setForm((current) => ({ ...current, date: key }));
+    setForm((current) => ({
+      ...current,
+      startDate: key,
+      endDate: current.singleDay ? key : current.endDate
+    }));
     setViewYear(new Date().getFullYear());
     setViewMonth(new Date().getMonth());
   }
@@ -202,8 +270,15 @@ export default function Kalendarz({ user, onLogout }) {
     setError("");
     setNotice("");
 
-    if (!form.title.trim() || !form.date || !form.categoryId) {
-      setError("Uzupełnij nazwę, datę i kategorię wydarzenia.");
+    const endDate = form.singleDay ? form.startDate : form.endDate;
+
+    if (!form.title.trim() || !form.startDate || !endDate) {
+      setError("Uzupełnij nazwę i datę wydarzenia.");
+      return;
+    }
+
+    if (!form.categoryId) {
+      setError("Wybierz kategorię z listy podpowiedzi.");
       return;
     }
 
@@ -212,16 +287,16 @@ export default function Kalendarz({ user, onLogout }) {
       return;
     }
 
-    if (form.start && form.end && form.end < form.start) {
-      setError("Godzina zakończenia nie może być wcześniejsza niż rozpoczęcia.");
+    if (!form.singleDay && endDate < form.startDate) {
+      setError("Data zakończenia nie może być wcześniejsza niż data rozpoczęcia.");
       return;
     }
 
     if (
       activeSchoolYear &&
       (
-        form.date < activeSchoolYear.start_date ||
-        form.date > activeSchoolYear.end_date
+        form.startDate < activeSchoolYear.start_date ||
+        endDate > activeSchoolYear.end_date
       )
     ) {
       setError(
@@ -236,11 +311,11 @@ export default function Kalendarz({ user, onLogout }) {
       const payload = {
         title: form.title.trim(),
         description: form.description.trim() || null,
-        start_date: form.date,
-        end_date: form.date,
-        start_time: form.start || null,
-        end_time: form.end || null,
-        location: form.place.trim() || null,
+        start_date: form.startDate,
+        end_date: endDate,
+        start_time:
+          form.singleDay && !form.allDay ? form.startTime || null : null,
+        end_time: null,
         category_id: Number(form.categoryId),
         school_year_id: Number(schoolYearId)
       };
@@ -251,17 +326,27 @@ export default function Kalendarz({ user, onLogout }) {
 
       if (insertError) throw insertError;
 
-      await loadEvents(schoolYearId);
+      const { data: refreshedEvents, error: eventsError } =
+        await fetchEvents(schoolYearId);
 
-      const [year, month] = form.date.split("-").map(Number);
+      if (eventsError) {
+        setError(`Nie udało się pobrać wydarzeń: ${eventsError.message}`);
+      } else {
+        setEvents(refreshedEvents || []);
+      }
+
+      const [year, month] = form.startDate.split("-").map(Number);
       setViewYear(year);
       setViewMonth(month - 1);
-      setSelectedDate(form.date);
+      setSelectedDate(form.startDate);
 
       setForm((current) => ({
         ...current,
         title: "",
-        place: "",
+        endDate: form.startDate,
+        singleDay: true,
+        startTime: "10:00",
+        allDay: false,
         description: ""
       }));
 
@@ -322,6 +407,12 @@ export default function Kalendarz({ user, onLogout }) {
           </div>
         </section>
 
+        {accessWarning && (
+          <div className="notice error-message" role="alert">
+            {accessWarning}
+          </div>
+        )}
+
         {error && (
           <div className="notice error-message" role="alert">
             {error}
@@ -339,7 +430,7 @@ export default function Kalendarz({ user, onLogout }) {
             Pobieranie danych z Supabase...
           </div>
         ) : (
-          <div className="workspace">
+          <div className={canManageEvents ? "workspace" : "workspace public-calendar"}>
             <section className="calendar-card">
               <div className="calendar-toolbar">
                 <div>
@@ -371,10 +462,7 @@ export default function Kalendarz({ user, onLogout }) {
                     value={viewYear}
                     onChange={(e) => setViewYear(Number(e.target.value))}
                   >
-                    {Array.from(
-                      { length: 15 },
-                      (_, i) => today.getFullYear() - 5 + i
-                    ).map((year) => (
+                    {[2026, 2027].map((year) => (
                       <option key={year} value={year}>{year}</option>
                     ))}
                   </select>
@@ -410,9 +498,7 @@ export default function Kalendarz({ user, onLogout }) {
                   const isSelected = key === selectedDate;
                   const isToday = key === dateKey(today);
 
-                  const dayEvents = events.filter(
-                    (event) => key >= event.start_date && key <= event.end_date
-                  );
+                  const dayEvents = eventsByDate.get(key) || [];
 
                   return (
                     <button
@@ -484,7 +570,8 @@ export default function Kalendarz({ user, onLogout }) {
               </div>
             </section>
 
-            <aside className="form-card">
+            {canManageEvents && (
+              <aside className="form-card">
               <div className="form-heading">
                 <div className="form-heading-icon">▣</div>
                 <h2>Dodaj wydarzenie</h2>
@@ -506,85 +593,179 @@ export default function Kalendarz({ user, onLogout }) {
                   required
                 />
 
-                <label htmlFor="event-date">Data <span>*</span></label>
-                <input
-                  id="event-date"
-                  type="date"
-                  value={form.date}
-                  onChange={(e) => {
-                    updateForm("date", e.target.value);
-                    setSelectedDate(e.target.value);
-                  }}
-                  required
-                />
-
-                <div className="time-row">
-                  <div>
-                    <label htmlFor="event-start">Od godziny</label>
-                    <input
-                      id="event-start"
-                      type="time"
-                      value={form.start}
-                      onChange={(e) => updateForm("start", e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="event-end">Do godziny</label>
-                    <input
-                      id="event-end"
-                      type="time"
-                      value={form.end}
-                      onChange={(e) => updateForm("end", e.target.value)}
-                    />
-                  </div>
-                </div>
-
                 <label htmlFor="event-category">
                   Kategoria <span>*</span>
                 </label>
-                <div className="select-wrap">
-                  <span
-                    className={`category-dot ${
-                      categoryClass(
-                        categories.find(
-                          (category) =>
-                            String(category.id) === String(form.categoryId)
-                        )?.name
-                      )
-                    }`}
-                    style={{
-                      backgroundColor:
-                        categories.find(
-                          (category) =>
-                            String(category.id) === String(form.categoryId)
-                        )?.color || undefined
-                    }}
-                  />
-                  <select
+                <div className="category-autocomplete">
+                  <input
                     id="event-category"
-                    value={form.categoryId}
-                    onChange={(e) => updateForm("categoryId", e.target.value)}
+                    type="text"
+                    value={form.categoryName}
+                    onChange={(e) => {
+                      updateCategory(e.target.value);
+                      setCategorySuggestionsOpen(true);
+                      setActiveCategoryIndex(-1);
+                    }}
+                    onFocus={() => setCategorySuggestionsOpen(true)}
+                    onBlur={() => setCategorySuggestionsOpen(false)}
+                    onKeyDown={(e) => {
+                      if (e.key === "ArrowDown") {
+                        e.preventDefault();
+                        setCategorySuggestionsOpen(true);
+                        setActiveCategoryIndex((current) =>
+                          Math.min(current + 1, filteredCategories.length - 1)
+                        );
+                      } else if (e.key === "ArrowUp") {
+                        e.preventDefault();
+                        setActiveCategoryIndex((current) => Math.max(current - 1, -1));
+                      } else if (e.key === "Escape") {
+                        setCategorySuggestionsOpen(false);
+                        setActiveCategoryIndex(-1);
+                      } else if (
+                        e.key === "Enter" &&
+                        categorySuggestionsOpen &&
+                        filteredCategories[activeCategoryIndex]
+                      ) {
+                        e.preventDefault();
+                        chooseCategory(filteredCategories[activeCategoryIndex]);
+                      }
+                    }}
+                    placeholder="Wpisz lub wybierz kategorię"
+                    autoComplete="off"
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-expanded={categorySuggestionsOpen}
+                    aria-controls="event-category-listbox"
+                    aria-activedescendant={
+                      activeCategoryIndex >= 0
+                        ? `event-category-option-${filteredCategories[activeCategoryIndex]?.id}`
+                        : undefined
+                    }
                     required
-                  >
-                    <option value="" disabled>Wybierz kategorię</option>
-                    {categories.map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
+                  />
+                  {categorySuggestionsOpen && (
+                    <div
+                      className="category-options"
+                      id="event-category-listbox"
+                      role="listbox"
+                    >
+                      {filteredCategories.length > 0 ? (
+                        filteredCategories.map((category, index) => (
+                          <button
+                            className={`category-option ${
+                              index === activeCategoryIndex ? "active" : ""
+                            }`}
+                            id={`event-category-option-${category.id}`}
+                            key={category.id}
+                            type="button"
+                            role="option"
+                            aria-selected={index === activeCategoryIndex}
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => chooseCategory(category)}
+                          >
+                            <i
+                              style={{ backgroundColor: category.color || "#8753c7" }}
+                              aria-hidden="true"
+                            />
+                            {category.name}
+                          </button>
+                        ))
+                      ) : (
+                        <div className="category-empty">Brak pasujących kategorii</div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                <label htmlFor="event-place">Miejsce</label>
-                <div className="input-with-icon">
+                <div className="form-toggle">
                   <input
-                    id="event-place"
-                    value={form.place}
-                    onChange={(e) => updateForm("place", e.target.value)}
-                    placeholder="Np. sala 204"
+                    id="single-day-event"
+                    type="checkbox"
+                    checked={form.singleDay}
+                    onChange={(e) => {
+                      const singleDay = e.target.checked;
+                      setForm((current) => ({
+                        ...current,
+                        singleDay,
+                        endDate: singleDay ? current.startDate : ""
+                      }));
+                    }}
                   />
-                  <span aria-hidden="true">♧</span>
+                  <label htmlFor="single-day-event">Wydarzenie jednodniowe</label>
                 </div>
+
+                <div className="date-row">
+                  <div>
+                    <label htmlFor="event-start-date">
+                      {form.singleDay ? "Data" : "Data od"} <span>*</span>
+                    </label>
+                    <input
+                      id="event-start-date"
+                      type="date"
+                      value={form.startDate}
+                      onChange={(e) => {
+                        const startDate = e.target.value;
+                        setForm((current) => ({
+                          ...current,
+                          startDate,
+                          endDate: current.singleDay ? startDate : current.endDate
+                        }));
+                        setSelectedDate(startDate);
+                        setNotice("");
+                      }}
+                      required
+                    />
+                  </div>
+
+                  {!form.singleDay && (
+                    <div>
+                      <label htmlFor="event-end-date">
+                        Data do <span>*</span>
+                      </label>
+                      <input
+                        id="event-end-date"
+                        type="date"
+                        value={form.endDate}
+                        min={form.startDate || undefined}
+                        onChange={(e) => updateForm("endDate", e.target.value)}
+                        required
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {form.singleDay ? (
+                  <>
+                    <div className="form-toggle">
+                      <input
+                        id="all-day-event"
+                        type="checkbox"
+                        checked={form.allDay}
+                        onChange={(e) => updateForm("allDay", e.target.checked)}
+                      />
+                      <label htmlFor="all-day-event">Wydarzenie całodniowe</label>
+                    </div>
+
+                    {!form.allDay && (
+                      <>
+                        <label htmlFor="event-start-time">
+                          Godzina rozpoczęcia <span>*</span>
+                        </label>
+                        <input
+                          id="event-start-time"
+                          type="time"
+                          value={form.startTime}
+                          onChange={(e) => updateForm("startTime", e.target.value)}
+                          required
+                        />
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <p className="form-hint">
+                    Dla wydarzenia wielodniowego godzina nie jest ustawiana.
+                  </p>
+                )}
 
                 <label htmlFor="event-description">
                   Opis (opcjonalnie)
@@ -614,7 +795,8 @@ export default function Kalendarz({ user, onLogout }) {
 
                 <p className="required-note">* Pola wymagane</p>
               </form>
-            </aside>
+              </aside>
+            )}
           </div>
         )}
       </main>

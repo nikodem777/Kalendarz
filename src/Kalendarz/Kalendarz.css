@@ -181,6 +181,10 @@ button {
   align-items: stretch;
 }
 
+.workspace.public-calendar {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .calendar-card,
 .form-card {
   background: #fff;
@@ -220,13 +224,13 @@ button {
 .calendar-controls {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
 }
 
 .outline-btn,
 .calendar-controls select,
 .arrow-btn {
-  height: 28px;
+  height: 32px;
   background: #fff;
   border: 1px solid #dce5f1;
   border-radius: 7px;
@@ -239,17 +243,19 @@ button {
 }
 
 .calendar-controls select {
-  padding: 0 9px;
-  max-width: 102px;
+  width: 122px;
+  max-width: 122px;
+  padding: 0 10px;
   outline: none;
 }
 
 .calendar-controls select:nth-of-type(2) {
-  max-width: 65px;
+  width: 76px;
+  max-width: 76px;
 }
 
 .arrow-btn {
-  width: 27px;
+  width: 32px;
   padding: 0;
   font-size: 20px;
   line-height: 1;
@@ -399,34 +405,42 @@ button {
 }
 
 .legend {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
   align-items: center;
-  flex-wrap: wrap;
-  gap: 18px;
-  padding: 19px 16px;
-  min-height: 50px;
+  gap: 14px 22px;
+  padding: 24px;
+  min-height: 72px;
   margin-top: auto;
 }
 
 .legend > strong {
-  font-size: 9px;
-  font-weight: 600;
+  grid-column: 1 / -1;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e7edf5;
+  color: #263650;
+  font-size: 15px;
+  font-weight: 700;
 }
 
 .legend-item {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  color: #7b8aa1;
-  font-size: 8px;
-  white-space: nowrap;
+  gap: 8px;
+  min-width: 0;
+  color: #52627a;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .legend-item i,
 .category-dot {
   display: inline-block;
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
   border-radius: 50%;
 }
 
@@ -542,6 +556,62 @@ button {
   box-shadow: 0 0 0 3px rgba(45, 104, 232, 0.08);
 }
 
+.category-autocomplete {
+  position: relative;
+  z-index: 2;
+  margin-bottom: 12px;
+}
+
+.category-autocomplete > input {
+  margin-bottom: 0;
+}
+
+.category-options {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  z-index: 20;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid #dce5f1;
+  border-radius: 7px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(35, 55, 90, 0.14);
+}
+
+.category-option {
+  width: 100%;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border: 0;
+  background: #fff;
+  color: #34445e;
+  font-size: 11px;
+  text-align: left;
+}
+
+.category-option:hover,
+.category-option.active {
+  background: #f3f6fb;
+}
+
+.category-option i {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+}
+
+.category-empty {
+  padding: 10px;
+  color: #7c8ba4;
+  font-size: 11px;
+}
+
 .time-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -550,6 +620,42 @@ button {
 
 .time-row > div {
   min-width: 0;
+}
+
+.date-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 130px), 1fr));
+  gap: 10px;
+}
+
+.date-row > div {
+  min-width: 0;
+}
+
+.form-toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 12px;
+}
+
+.form-card .form-toggle input[type="checkbox"] {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: #2864e8;
+}
+
+.form-toggle label {
+  margin: 0;
+}
+
+.form-hint {
+  margin: -3px 0 12px;
+  color: #7c8ba4;
+  font-size: 11px;
+  line-height: 1.4;
 }
 
 .time-row input {
@@ -635,7 +741,8 @@ button {
 
 @media (min-width: 1200px) {
   .workspace {
-    grid-template-columns: minmax(0, 1fr) 256px;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 14px;
   }
 
   .day-cell {
@@ -707,12 +814,13 @@ button {
   }
 
   .calendar-controls select {
+    width: auto;
     flex: 1;
     max-width: none;
   }
 
   .calendar-controls select:nth-of-type(2) {
-    flex: 0 0 62px;
+    flex: 0 0 68px;
   }
 
   .outline-btn {
@@ -751,13 +859,13 @@ button {
   }
 
   .legend {
-    gap: 10px;
-    padding: 13px 10px;
+    gap: 12px 16px;
+    padding: 18px 14px;
   }
 
   .legend-item {
-    font-size: 7px;
-    gap: 4px;
+    font-size: 9px;
+    gap: 7px;
   }
 
   .form-card {
@@ -797,6 +905,51 @@ button {
   cursor: not-allowed;
 }
 
+@media (min-width: 901px) {
+  .page {
+    max-width: 1600px;
+    min-height: calc(100vh - 60px);
+    padding: 24px 12px 30px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .workspace {
+    flex: 1;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 14px;
+  }
+
+  .form-card {
+    padding: 18px;
+  }
+
+  .form-card input,
+  .form-card select {
+    height: 36px;
+  }
+
+  .form-card textarea {
+    min-height: 60px;
+  }
+
+  .category-dot {
+    top: 15px;
+  }
+
+  .input-with-icon > span {
+    top: 10px;
+  }
+
+  .submit-btn {
+    min-height: 40px;
+  }
+
+  .calendar-grid {
+    flex: 1;
+    grid-template-rows: 27px repeat(6, minmax(73px, 1fr));
+  }
+}
 
 
 
@@ -848,9 +1001,12 @@ button {
   font-size: 9px;
 }
 
-.legend > strong,
+.legend > strong {
+  font-size: 15px;
+}
+
 .legend-item {
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .form-heading h2 {
@@ -891,7 +1047,11 @@ button {
     font-size: 6px;
   }
 
+  .legend > strong {
+    font-size: 14px;
+  }
+
   .legend-item {
-    font-size: 7px;
+    font-size: 11px;
   }
 }
