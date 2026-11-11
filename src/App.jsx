@@ -13,6 +13,7 @@ function App() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN") {
+        // Po zalogowaniu na nowe konto poprzednia rola nie może wpływać na widok.
         setProfileRole(null);
         setUser(session?.user ?? null);
       } else if (event === "SIGNED_OUT") {
@@ -31,6 +32,7 @@ function App() {
   useEffect(() => {
     if (!userId) return undefined;
 
+    // Odpowiedź jest ważna tylko dla bieżącego konta; cleanup blokuje zapis spóźnionego wyniku.
     let active = true;
 
     supabase
@@ -45,12 +47,13 @@ function App() {
           console.error("Błąd pobierania roli użytkownika:", error.message);
         }
 
+        // Brak roli lub błąd odczytu nie przyznaje uprawnień administratora.
         setProfileRole({
           userId,
           role: error ? "user" : data?.role?.toLowerCase() || "user",
           accessWarning: error
             ? "Nie udało się pobrać roli użytkownika z tabeli profiles."
-            : ""
+            : "",
         });
       })
       .catch((error) => {
@@ -60,7 +63,8 @@ function App() {
         setProfileRole({
           userId,
           role: "user",
-          accessWarning: "Nie udało się pobrać roli użytkownika z tabeli profiles."
+          accessWarning:
+            "Nie udało się pobrać roli użytkownika z tabeli profiles.",
         });
       });
 
@@ -78,6 +82,7 @@ function App() {
   };
 
   if (user && profileRole?.userId !== user.id) {
+    // Czekamy na rolę bieżącego użytkownika, zanim wybierzemy widok kalendarza.
     return (
       <div
         style={{

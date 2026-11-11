@@ -1,16 +1,30 @@
-
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabaseClient";
 import "./Kalendarz.css";
 
 const MONTHS = [
-  "Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec",
-  "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"
+  "Styczeń",
+  "Luty",
+  "Marzec",
+  "Kwiecień",
+  "Maj",
+  "Czerwiec",
+  "Lipiec",
+  "Sierpień",
+  "Wrzesień",
+  "Październik",
+  "Listopad",
+  "Grudzień",
 ];
 
 const WEEKDAYS = [
-  "Poniedziałek", "Wtorek", "Środa", "Czwartek",
-  "Piątek", "Sobota", "Niedziela"
+  "Poniedziałek",
+  "Wtorek",
+  "Środa",
+  "Czwartek",
+  "Piątek",
+  "Sobota",
+  "Niedziela",
 ];
 
 const pad = (n) => String(n).padStart(2, "0");
@@ -27,7 +41,8 @@ const categoryClass = (name = "") => {
     normalized.includes("wolny") ||
     normalized.includes("święto") ||
     normalized.includes("swieto")
-  ) return "holiday";
+  )
+    return "holiday";
 
   return "event";
 };
@@ -36,7 +51,7 @@ export default function Kalendarz({
   user,
   onLogout,
   accessWarning = "",
-  canManageEvents = false
+  canManageEvents = false,
 }) {
   const today = new Date();
 
@@ -65,31 +80,40 @@ export default function Kalendarz({
     allDay: false,
     categoryId: "",
     categoryName: "",
-    description: ""
+    description: "",
   });
 
   const activeSchoolYear = schoolYears.find(
-    (year) => String(year.id) === String(schoolYearId)
+    (year) => String(year.id) === String(schoolYearId),
   );
   const filteredCategories = categories.filter((category) =>
-    category.name.toLocaleLowerCase().includes(form.categoryName.trim().toLocaleLowerCase())
+    category.name
+      .toLocaleLowerCase()
+      .includes(form.categoryName.trim().toLocaleLowerCase()),
   );
 
   // Pobieranie wydarzeń dla wybranego roku szkolnego.
-  const fetchEvents = useCallback((yearId) => supabase
-      .from("events")
-      .select(`
+  const fetchEvents = useCallback(
+    (yearId) =>
+      supabase
+        .from("events")
+        .select(
+          `
         *,
         categories (
           id,
           name,
           color
         )
-      `)
-      .eq("school_year_id", yearId)
-      .order("start_date", { ascending: true }), []);
+      `,
+        )
+        .eq("school_year_id", yearId)
+        .order("start_date", { ascending: true }),
+    [],
+  );
 
   useEffect(() => {
+    // Ignorujemy wynik, jeśli komponent odmontowano przed odpowiedzią Supabase.
     let active = true;
 
     Promise.all([
@@ -100,37 +124,44 @@ export default function Kalendarz({
       supabase
         .from("categories")
         .select("id, name, color, description")
-        .order("name")
+        .order("name"),
     ])
-      .then(([{ data: years, error: yearsError }, { data: cats, error: catsError }]) => {
-        if (!active) return;
-        if (yearsError) throw yearsError;
-        if (catsError) throw catsError;
+      .then(
+        ([
+          { data: years, error: yearsError },
+          { data: cats, error: catsError },
+        ]) => {
+          if (!active) return;
+          if (yearsError) throw yearsError;
+          if (catsError) throw catsError;
 
-        const loadedYears = years || [];
-        const loadedCategories = cats || [];
+          const loadedYears = years || [];
+          const loadedCategories = cats || [];
 
-        setSchoolYears(loadedYears);
-        setCategories(loadedCategories);
+          setSchoolYears(loadedYears);
+          setCategories(loadedCategories);
 
-        setSchoolYearId((current) => {
-          if (
-            current &&
-            loadedYears.some((year) => String(year.id) === String(current))
-          ) {
-            return current;
-          }
+          setSchoolYearId((current) => {
+            if (
+              current &&
+              loadedYears.some((year) => String(year.id) === String(current))
+            ) {
+              return current;
+            }
 
-          const activeYear = loadedYears.find((year) => year.is_active);
-          return String((activeYear || loadedYears[0])?.id ?? "");
-        });
+            const activeYear = loadedYears.find((year) => year.is_active);
+            return String((activeYear || loadedYears[0])?.id ?? "");
+          });
 
-        setForm((current) => ({
-          ...current,
-          categoryId: current.categoryId || String(loadedCategories[0]?.id ?? ""),
-          categoryName: current.categoryName || loadedCategories[0]?.name || ""
-        }));
-      })
+          setForm((current) => ({
+            ...current,
+            categoryId:
+              current.categoryId || String(loadedCategories[0]?.id ?? ""),
+            categoryName:
+              current.categoryName || loadedCategories[0]?.name || "",
+          }));
+        },
+      )
       .catch((err) => {
         if (active) setError(`Nie udało się pobrać danych: ${err.message}`);
       })
@@ -146,6 +177,7 @@ export default function Kalendarz({
   useEffect(() => {
     if (!schoolYearId) return undefined;
 
+    // Po zmianie roku szkolnego starsze zapytanie nie może nadpisać nowszych danych.
     let active = true;
 
     fetchEvents(schoolYearId).then(({ data, error: eventsError }) => {
@@ -165,6 +197,7 @@ export default function Kalendarz({
 
   const calendarDays = useMemo(() => {
     const first = new Date(viewYear, viewMonth, 1);
+    // getDay() liczy od niedzieli, dlatego przesuwamy siatkę tak, by zaczynała się w poniedziałek.
     const mondayOffset = (first.getDay() + 6) % 7;
     const start = new Date(viewYear, viewMonth, 1 - mondayOffset);
 
@@ -175,17 +208,19 @@ export default function Kalendarz({
     });
   }, [viewYear, viewMonth]);
 
-  const monthEvents = useMemo(() => events.filter((event) => {
-    const date = new Date(`${event.start_date}T12:00:00`);
-    return (
-      date.getFullYear() === viewYear &&
-      date.getMonth() === viewMonth
-    );
-  }), [events, viewYear, viewMonth]);
+  const monthEvents = useMemo(
+    () =>
+      events.filter((event) => {
+        const date = new Date(`${event.start_date}T12:00:00`);
+        return date.getFullYear() === viewYear && date.getMonth() === viewMonth;
+      }),
+    [events, viewYear, viewMonth],
+  );
 
   const eventsByDate = useMemo(() => {
     const byDate = new Map();
 
+    // Wydarzenie wielodniowe przypisujemy do każdego dnia zakresu, aby widoczne było w każdej komórce.
     for (const event of events) {
       const current = new Date(`${event.start_date}T12:00:00`);
       const end = new Date(`${event.end_date}T12:00:00`);
@@ -218,20 +253,21 @@ export default function Kalendarz({
     setForm((current) => ({
       ...current,
       startDate: key,
-      endDate: current.singleDay ? key : current.endDate
+      endDate: current.singleDay ? key : current.endDate,
     }));
     setNotice("");
   }
 
   function updateCategory(name) {
     const category = categories.find(
-      (item) => item.name.toLocaleLowerCase() === name.trim().toLocaleLowerCase()
+      (item) =>
+        item.name.toLocaleLowerCase() === name.trim().toLocaleLowerCase(),
     );
 
     setForm((current) => ({
       ...current,
       categoryName: name,
-      categoryId: category ? String(category.id) : ""
+      categoryId: category ? String(category.id) : "",
     }));
     setNotice("");
   }
@@ -240,7 +276,7 @@ export default function Kalendarz({
     setForm((current) => ({
       ...current,
       categoryName: category.name,
-      categoryId: String(category.id)
+      categoryId: String(category.id),
     }));
     setCategorySuggestionsOpen(false);
     setActiveCategoryIndex(-1);
@@ -259,7 +295,7 @@ export default function Kalendarz({
     setForm((current) => ({
       ...current,
       startDate: key,
-      endDate: current.singleDay ? key : current.endDate
+      endDate: current.singleDay ? key : current.endDate,
     }));
     setViewYear(new Date().getFullYear());
     setViewMonth(new Date().getMonth());
@@ -288,19 +324,19 @@ export default function Kalendarz({
     }
 
     if (!form.singleDay && endDate < form.startDate) {
-      setError("Data zakończenia nie może być wcześniejsza niż data rozpoczęcia.");
+      setError(
+        "Data zakończenia nie może być wcześniejsza niż data rozpoczęcia.",
+      );
       return;
     }
 
     if (
       activeSchoolYear &&
-      (
-        form.startDate < activeSchoolYear.start_date ||
-        endDate > activeSchoolYear.end_date
-      )
+      (form.startDate < activeSchoolYear.start_date ||
+        endDate > activeSchoolYear.end_date)
     ) {
       setError(
-        `Data musi mieścić się w roku szkolnym ${activeSchoolYear.name}.`
+        `Data musi mieścić się w roku szkolnym ${activeSchoolYear.name}.`,
       );
       return;
     }
@@ -317,7 +353,7 @@ export default function Kalendarz({
           form.singleDay && !form.allDay ? form.startTime || null : null,
         end_time: null,
         category_id: Number(form.categoryId),
-        school_year_id: Number(schoolYearId)
+        school_year_id: Number(schoolYearId),
       };
 
       const { error: insertError } = await supabase
@@ -347,7 +383,7 @@ export default function Kalendarz({
         singleDay: true,
         startTime: "10:00",
         allDay: false,
-        description: ""
+        description: "",
       }));
 
       setNotice("Wydarzenie zapisano w bazie Supabase.");
@@ -355,7 +391,7 @@ export default function Kalendarz({
       setError(
         err.code === "42501"
           ? "Brak uprawnień do dodawania wydarzeń. Sprawdź, czy użytkownik jest administratorem."
-          : `Nie udało się zapisać wydarzenia: ${err.message}`
+          : `Nie udało się zapisać wydarzenia: ${err.message}`,
       );
     } finally {
       setSaving(false);
@@ -363,13 +399,20 @@ export default function Kalendarz({
   }
 
   const schoolYearLabel = activeSchoolYear?.name || "Nie wybrano";
-  const profileName = user?.name || user?.user_metadata?.full_name ||
-    user?.email || "Zalogowany użytkownik";
+  const profileName =
+    user?.name ||
+    user?.user_metadata?.full_name ||
+    user?.email ||
+    "Zalogowany użytkownik";
   const selectedDayEvents = eventsByDate.get(selectedDate) || [];
-  const selectedDateLabel = new Date(`${selectedDate}T12:00:00`).toLocaleDateString(
-    "pl-PL",
-    { weekday: "long", day: "numeric", month: "long", year: "numeric" }
-  );
+  const selectedDateLabel = new Date(
+    `${selectedDate}T12:00:00`,
+  ).toLocaleDateString("pl-PL", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 
   return (
     <div className="app-shell">
@@ -404,8 +447,7 @@ export default function Kalendarz({
           <div>
             <h1>Twój szkolny kalendarz</h1>
             <p>
-              Wszystkie ważne terminy w jednym miejscu.
-              Zaplanuj swój miesiąc.
+              Wszystkie ważne terminy w jednym miejscu. Zaplanuj swój miesiąc.
             </p>
           </div>
           <div className="school-year">
@@ -436,11 +478,17 @@ export default function Kalendarz({
             Pobieranie danych z Supabase...
           </div>
         ) : (
-          <div className={canManageEvents ? "workspace" : "workspace public-calendar"}>
+          <div
+            className={
+              canManageEvents ? "workspace" : "workspace public-calendar"
+            }
+          >
             <section className="calendar-card">
               <div className="calendar-toolbar">
                 <div>
-                  <h2>{MONTHS[viewMonth]} {viewYear}</h2>
+                  <h2>
+                    {MONTHS[viewMonth]} {viewYear}
+                  </h2>
                   <p>{monthEvents.length} wydarzeń w tym miesiącu</p>
                 </div>
 
@@ -459,7 +507,9 @@ export default function Kalendarz({
                     onChange={(e) => setViewMonth(Number(e.target.value))}
                   >
                     {MONTHS.map((month, index) => (
-                      <option key={month} value={index}>{month}</option>
+                      <option key={month} value={index}>
+                        {month}
+                      </option>
                     ))}
                   </select>
 
@@ -469,7 +519,9 @@ export default function Kalendarz({
                     onChange={(e) => setViewYear(Number(e.target.value))}
                   >
                     {[2026, 2027].map((year) => (
-                      <option key={year} value={year}>{year}</option>
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
                     ))}
                   </select>
 
@@ -495,7 +547,9 @@ export default function Kalendarz({
 
               <div className="calendar-grid">
                 {WEEKDAYS.map((day) => (
-                  <div className="weekday" key={day}>{day}</div>
+                  <div className="weekday" key={day}>
+                    {day}
+                  </div>
                 ))}
 
                 {calendarDays.map((date) => {
@@ -516,7 +570,9 @@ export default function Kalendarz({
                       onClick={() => chooseDate(date)}
                       aria-label={`${date.getDate()} ${MONTHS[date.getMonth()]} ${date.getFullYear()}${dayEvents.length ? `, ${dayEvents.length} wydarzeń` : ""}`}
                     >
-                      <span className={`day-number ${isToday ? "today-number" : ""}`}>
+                      <span
+                        className={`day-number ${isToday ? "today-number" : ""}`}
+                      >
                         {date.getDate()}
                       </span>
 
@@ -536,7 +592,7 @@ export default function Kalendarz({
                                   ? {
                                       borderColor: category.color,
                                       backgroundColor: `${category.color}18`,
-                                      color: category.color
+                                      color: category.color,
                                     }
                                   : undefined
                               }
@@ -578,7 +634,9 @@ export default function Kalendarz({
                         <li
                           className="selected-day-item"
                           key={event.id}
-                          style={{ borderLeftColor: category?.color || "#dce5f1" }}
+                          style={{
+                            borderLeftColor: category?.color || "#dce5f1",
+                          }}
                         >
                           <div className="selected-day-item-heading">
                             <strong>{event.title}</strong>
@@ -588,15 +646,18 @@ export default function Kalendarz({
                               )}
                               {category?.name && (
                                 <span>
-                                  <i style={{ backgroundColor: category.color || "#8753c7" }} />
+                                  <i
+                                    style={{
+                                      backgroundColor:
+                                        category.color || "#8753c7",
+                                    }}
+                                  />
                                   {category.name}
                                 </span>
                               )}
                             </div>
                           </div>
-                          {event.description && (
-                            <p>{event.description}</p>
-                          )}
+                          {event.description && <p>{event.description}</p>}
                         </li>
                       );
                     })}
@@ -619,229 +680,250 @@ export default function Kalendarz({
 
             {canManageEvents && (
               <aside className="form-card">
-              <div className="form-heading">
-                <div className="form-heading-icon">▣</div>
-                <h2>Dodaj wydarzenie</h2>
-              </div>
+                <div className="form-heading">
+                  <div className="form-heading-icon">▣</div>
+                  <h2>Dodaj wydarzenie</h2>
+                </div>
 
-              <p className="form-intro">
-                Uzupełnij dane i zapisz nowy termin w kalendarzu.
-              </p>
+                <p className="form-intro">
+                  Uzupełnij dane i zapisz nowy termin w kalendarzu.
+                </p>
 
-              <form onSubmit={addEvent}>
-                <label htmlFor="event-title">
-                  Nazwa wydarzenia <span>*</span>
-                </label>
-                <input
-                  id="event-title"
-                  value={form.title}
-                  onChange={(e) => updateForm("title", e.target.value)}
-                  placeholder="Np. sprawdzian z biologii"
-                  required
-                />
-
-                <label htmlFor="event-category">
-                  Kategoria <span>*</span>
-                </label>
-                <div className="category-autocomplete">
+                <form onSubmit={addEvent}>
+                  <label htmlFor="event-title">
+                    Nazwa wydarzenia <span>*</span>
+                  </label>
                   <input
-                    id="event-category"
-                    type="text"
-                    value={form.categoryName}
-                    onChange={(e) => {
-                      updateCategory(e.target.value);
-                      setCategorySuggestionsOpen(true);
-                      setActiveCategoryIndex(-1);
-                    }}
-                    onFocus={() => setCategorySuggestionsOpen(true)}
-                    onBlur={() => setCategorySuggestionsOpen(false)}
-                    onKeyDown={(e) => {
-                      if (e.key === "ArrowDown") {
-                        e.preventDefault();
-                        setCategorySuggestionsOpen(true);
-                        setActiveCategoryIndex((current) =>
-                          Math.min(current + 1, filteredCategories.length - 1)
-                        );
-                      } else if (e.key === "ArrowUp") {
-                        e.preventDefault();
-                        setActiveCategoryIndex((current) => Math.max(current - 1, -1));
-                      } else if (e.key === "Escape") {
-                        setCategorySuggestionsOpen(false);
-                        setActiveCategoryIndex(-1);
-                      } else if (
-                        e.key === "Enter" &&
-                        categorySuggestionsOpen &&
-                        filteredCategories[activeCategoryIndex]
-                      ) {
-                        e.preventDefault();
-                        chooseCategory(filteredCategories[activeCategoryIndex]);
-                      }
-                    }}
-                    placeholder="Wpisz lub wybierz kategorię"
-                    autoComplete="off"
-                    role="combobox"
-                    aria-autocomplete="list"
-                    aria-expanded={categorySuggestionsOpen}
-                    aria-controls="event-category-listbox"
-                    aria-activedescendant={
-                      activeCategoryIndex >= 0
-                        ? `event-category-option-${filteredCategories[activeCategoryIndex]?.id}`
-                        : undefined
-                    }
+                    id="event-title"
+                    value={form.title}
+                    onChange={(e) => updateForm("title", e.target.value)}
+                    placeholder="Np. sprawdzian z biologii"
                     required
                   />
-                  {categorySuggestionsOpen && (
-                    <div
-                      className="category-options"
-                      id="event-category-listbox"
-                      role="listbox"
-                    >
-                      {filteredCategories.length > 0 ? (
-                        filteredCategories.map((category, index) => (
-                          <button
-                            className={`category-option ${
-                              index === activeCategoryIndex ? "active" : ""
-                            }`}
-                            id={`event-category-option-${category.id}`}
-                            key={category.id}
-                            type="button"
-                            role="option"
-                            aria-selected={index === activeCategoryIndex}
-                            onMouseDown={(e) => e.preventDefault()}
-                            onClick={() => chooseCategory(category)}
-                          >
-                            <i
-                              style={{ backgroundColor: category.color || "#8753c7" }}
-                              aria-hidden="true"
-                            />
-                            {category.name}
-                          </button>
-                        ))
-                      ) : (
-                        <div className="category-empty">Brak pasujących kategorii</div>
-                      )}
-                    </div>
-                  )}
-                </div>
 
-                <div className="form-toggle">
-                  <input
-                    id="single-day-event"
-                    type="checkbox"
-                    checked={form.singleDay}
-                    onChange={(e) => {
-                      const singleDay = e.target.checked;
-                      setForm((current) => ({
-                        ...current,
-                        singleDay,
-                        endDate: singleDay ? current.startDate : ""
-                      }));
-                    }}
-                  />
-                  <label htmlFor="single-day-event">Wydarzenie jednodniowe</label>
-                </div>
-
-                <div className="date-row">
-                  <div>
-                    <label htmlFor="event-start-date">
-                      {form.singleDay ? "Data" : "Data od"} <span>*</span>
-                    </label>
+                  <label htmlFor="event-category">
+                    Kategoria <span>*</span>
+                  </label>
+                  <div className="category-autocomplete">
                     <input
-                      id="event-start-date"
-                      type="date"
-                      value={form.startDate}
+                      id="event-category"
+                      type="text"
+                      value={form.categoryName}
                       onChange={(e) => {
-                        const startDate = e.target.value;
-                        setForm((current) => ({
-                          ...current,
-                          startDate,
-                          endDate: current.singleDay ? startDate : current.endDate
-                        }));
-                        setSelectedDate(startDate);
-                        setNotice("");
+                        updateCategory(e.target.value);
+                        setCategorySuggestionsOpen(true);
+                        setActiveCategoryIndex(-1);
                       }}
+                      onFocus={() => setCategorySuggestionsOpen(true)}
+                      onBlur={() => setCategorySuggestionsOpen(false)}
+                      onKeyDown={(e) => {
+                        if (e.key === "ArrowDown") {
+                          e.preventDefault();
+                          setCategorySuggestionsOpen(true);
+                          setActiveCategoryIndex((current) =>
+                            Math.min(
+                              current + 1,
+                              filteredCategories.length - 1,
+                            ),
+                          );
+                        } else if (e.key === "ArrowUp") {
+                          e.preventDefault();
+                          setActiveCategoryIndex((current) =>
+                            Math.max(current - 1, -1),
+                          );
+                        } else if (e.key === "Escape") {
+                          setCategorySuggestionsOpen(false);
+                          setActiveCategoryIndex(-1);
+                        } else if (
+                          e.key === "Enter" &&
+                          categorySuggestionsOpen &&
+                          filteredCategories[activeCategoryIndex]
+                        ) {
+                          e.preventDefault();
+                          chooseCategory(
+                            filteredCategories[activeCategoryIndex],
+                          );
+                        }
+                      }}
+                      placeholder="Wpisz lub wybierz kategorię"
+                      autoComplete="off"
+                      role="combobox"
+                      aria-autocomplete="list"
+                      aria-expanded={categorySuggestionsOpen}
+                      aria-controls="event-category-listbox"
+                      aria-activedescendant={
+                        activeCategoryIndex >= 0
+                          ? `event-category-option-${filteredCategories[activeCategoryIndex]?.id}`
+                          : undefined
+                      }
                       required
                     />
+                    {categorySuggestionsOpen && (
+                      <div
+                        className="category-options"
+                        id="event-category-listbox"
+                        role="listbox"
+                      >
+                        {filteredCategories.length > 0 ? (
+                          filteredCategories.map((category, index) => (
+                            <button
+                              className={`category-option ${
+                                index === activeCategoryIndex ? "active" : ""
+                              }`}
+                              id={`event-category-option-${category.id}`}
+                              key={category.id}
+                              type="button"
+                              role="option"
+                              aria-selected={index === activeCategoryIndex}
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => chooseCategory(category)}
+                            >
+                              <i
+                                style={{
+                                  backgroundColor: category.color || "#8753c7",
+                                }}
+                                aria-hidden="true"
+                              />
+                              {category.name}
+                            </button>
+                          ))
+                        ) : (
+                          <div className="category-empty">
+                            Brak pasujących kategorii
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
-                  {!form.singleDay && (
+                  <div className="form-toggle">
+                    <input
+                      id="single-day-event"
+                      type="checkbox"
+                      checked={form.singleDay}
+                      onChange={(e) => {
+                        const singleDay = e.target.checked;
+                        setForm((current) => ({
+                          ...current,
+                          singleDay,
+                          endDate: singleDay ? current.startDate : "",
+                        }));
+                      }}
+                    />
+                    <label htmlFor="single-day-event">
+                      Wydarzenie jednodniowe
+                    </label>
+                  </div>
+
+                  <div className="date-row">
                     <div>
-                      <label htmlFor="event-end-date">
-                        Data do <span>*</span>
+                      <label htmlFor="event-start-date">
+                        {form.singleDay ? "Data" : "Data od"} <span>*</span>
                       </label>
                       <input
-                        id="event-end-date"
+                        id="event-start-date"
                         type="date"
-                        value={form.endDate}
-                        min={form.startDate || undefined}
-                        onChange={(e) => updateForm("endDate", e.target.value)}
+                        value={form.startDate}
+                        onChange={(e) => {
+                          const startDate = e.target.value;
+                          setForm((current) => ({
+                            ...current,
+                            startDate,
+                            endDate: current.singleDay
+                              ? startDate
+                              : current.endDate,
+                          }));
+                          setSelectedDate(startDate);
+                          setNotice("");
+                        }}
                         required
                       />
                     </div>
-                  )}
-                </div>
 
-                {form.singleDay ? (
-                  <>
-                    <div className="form-toggle">
-                      <input
-                        id="all-day-event"
-                        type="checkbox"
-                        checked={form.allDay}
-                        onChange={(e) => updateForm("allDay", e.target.checked)}
-                      />
-                      <label htmlFor="all-day-event">Wydarzenie całodniowe</label>
-                    </div>
-
-                    {!form.allDay && (
-                      <>
-                        <label htmlFor="event-start-time">
-                          Godzina rozpoczęcia <span>*</span>
+                    {!form.singleDay && (
+                      <div>
+                        <label htmlFor="event-end-date">
+                          Data do <span>*</span>
                         </label>
                         <input
-                          id="event-start-time"
-                          type="time"
-                          value={form.startTime}
-                          onChange={(e) => updateForm("startTime", e.target.value)}
+                          id="event-end-date"
+                          type="date"
+                          value={form.endDate}
+                          min={form.startDate || undefined}
+                          onChange={(e) =>
+                            updateForm("endDate", e.target.value)
+                          }
                           required
                         />
-                      </>
+                      </div>
                     )}
-                  </>
-                ) : (
-                  <p className="form-hint">
-                    Dla wydarzenia wielodniowego godzina nie jest ustawiana.
-                  </p>
-                )}
+                  </div>
 
-                <label htmlFor="event-description">
-                  Opis (opcjonalnie)
-                </label>
-                <textarea
-                  id="event-description"
-                  value={form.description}
-                  onChange={(e) => updateForm("description", e.target.value)}
-                  placeholder="Dodaj szczegóły wydarzenia..."
-                  rows="3"
-                />
+                  {form.singleDay ? (
+                    <>
+                      <div className="form-toggle">
+                        <input
+                          id="all-day-event"
+                          type="checkbox"
+                          checked={form.allDay}
+                          onChange={(e) =>
+                            updateForm("allDay", e.target.checked)
+                          }
+                        />
+                        <label htmlFor="all-day-event">
+                          Wydarzenie całodniowe
+                        </label>
+                      </div>
 
-                <button
-                  className="submit-btn"
-                  type="submit"
-                  disabled={saving || categories.length === 0}
-                >
-                  <span>＋</span>
-                  {saving ? "Zapisywanie..." : "Dodaj wydarzenie"}
-                </button>
+                      {!form.allDay && (
+                        <>
+                          <label htmlFor="event-start-time">
+                            Godzina rozpoczęcia <span>*</span>
+                          </label>
+                          <input
+                            id="event-start-time"
+                            type="time"
+                            value={form.startTime}
+                            onChange={(e) =>
+                              updateForm("startTime", e.target.value)
+                            }
+                            required
+                          />
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <p className="form-hint">
+                      Dla wydarzenia wielodniowego godzina nie jest ustawiana.
+                    </p>
+                  )}
 
-                {categories.length === 0 && (
-                  <p className="required-note">
-                    Najpierw dodaj kategorie w tabeli categories.
-                  </p>
-                )}
+                  <label htmlFor="event-description">Opis (opcjonalnie)</label>
+                  <textarea
+                    id="event-description"
+                    value={form.description}
+                    onChange={(e) => updateForm("description", e.target.value)}
+                    placeholder="Dodaj szczegóły wydarzenia..."
+                    rows="3"
+                  />
 
-                <p className="required-note">* Pola wymagane</p>
-              </form>
+                  <button
+                    className="submit-btn"
+                    type="submit"
+                    disabled={saving || categories.length === 0}
+                  >
+                    <span>＋</span>
+                    {saving ? "Zapisywanie..." : "Dodaj wydarzenie"}
+                  </button>
+
+                  {categories.length === 0 && (
+                    <p className="required-note">
+                      Najpierw dodaj kategorie w tabeli categories.
+                    </p>
+                  )}
+
+                  <p className="required-note">* Pola wymagane</p>
+                </form>
               </aside>
             )}
           </div>
