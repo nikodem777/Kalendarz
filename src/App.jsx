@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import Login from "./Login/Login";
 import Kalendarz from "./Kalendarz/Kalendarz";
@@ -14,7 +15,6 @@ function App() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" || event === "INITIAL_SESSION") {
-        // Po zalogowaniu na nowe konto poprzednia rola nie może wpływać na widok.
         setProfileRole(null);
         setUser(session?.user ?? null);
         if (event === "SIGNED_IN") setShowLogin(false);
@@ -25,9 +25,7 @@ function App() {
       }
     });
 
-    return () => {
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
   const userId = user?.id;
@@ -35,7 +33,6 @@ function App() {
   useEffect(() => {
     if (!userId) return undefined;
 
-    // Odpowiedź jest ważna tylko dla bieżącego konta; cleanup blokuje zapis spóźnionego wyniku.
     let active = true;
 
     supabase
@@ -50,7 +47,6 @@ function App() {
           console.error("Błąd pobierania roli użytkownika:", error.message);
         }
 
-        // Brak roli lub błąd odczytu nie przyznaje uprawnień administratora.
         setProfileRole({
           userId,
           role: error ? "user" : data?.role?.toLowerCase() || "user",
@@ -85,7 +81,6 @@ function App() {
   };
 
   if (user && profileRole?.userId !== user.id) {
-    // Czekamy na rolę bieżącego użytkownika, zanim wybierzemy widok kalendarza.
     return (
       <div
         style={{
